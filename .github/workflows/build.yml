@@ -1,0 +1,42 @@
+name: Build para Appetize
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Versión de Xcode
+        run: xcodebuild -version
+
+      - name: Compilar para el simulador de iOS
+        run: |
+          xcodebuild \
+            -project SantosLaguna.xcodeproj \
+            -target SantosLaguna \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            ONLY_ACTIVE_ARCH=NO \
+            ARCHS="arm64 x86_64" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            SYMROOT="$PWD/build" \
+            build
+
+      - name: Empaquetar .app en zip
+        run: |
+          cd build/Debug-iphonesimulator
+          ditto -c -k --sequesterRsrc --keepParent SantosLaguna.app "$GITHUB_WORKSPACE/SantosLaguna.zip"
+          ls -la "$GITHUB_WORKSPACE/SantosLaguna.zip"
+
+      - name: Subir zip como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: SantosLaguna-Appetize
+          path: SantosLaguna.zip
