@@ -3,7 +3,11 @@ name: Build para Appetize
 on:
   push:
     branches: [ main ]
+    paths-ignore: [ 'capturas/**' ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -40,3 +44,30 @@ jobs:
         with:
           name: SantosLaguna-Appetize
           path: SantosLaguna.zip
+
+      - name: Capturas de pantalla en el simulador
+        run: |
+          UDID=$(xcrun simctl list devices available | grep -E "iPhone 1[5-7] \(" | head -1 | grep -oE "[0-9A-F-]{36}")
+          echo "Simulador: $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryLevel 100 --batteryState charged --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$UDID" build/Debug-iphonesimulator/SantosLaguna.app
+          mkdir -p capturas
+          nombres=(1_inicio 2_historia 3_campeonatos 4_estadio 5_ubicacion 6_cantera)
+          for i in 0 1 2 3 4 5; do
+            xcrun simctl launch "$UDID" mx.santoslaguna.SantosLaguna -pantalla $i
+            if [ $i -eq 0 ]; then sleep 12; elif [ $i -eq 4 ]; then sleep 15; else sleep 5; fi
+            xcrun simctl io "$UDID" screenshot "capturas/${nombres[$i]}.png"
+            xcrun simctl terminate "$UDID" mx.santoslaguna.SantosLaguna || true
+            sleep 1
+          done
+          ls -la capturas
+
+      - name: Guardar capturas en el repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add capturas
+          git diff --cached --quiet || git commit -m "Capturas de pantalla del simulador [skip ci]"
+          git push

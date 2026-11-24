@@ -50,7 +50,10 @@ enum Pantalla: Int, CaseIterable {
 
 // MARK: - Vista principal
 struct ContentView: View {
-    @State private var pantallaActual: Pantalla = .principal
+    // Pantalla inicial: normalmente .principal. Se puede cambiar con el
+    // argumento de arranque "-pantalla N" (se usa para tomar capturas).
+    @State private var pantallaActual: Pantalla =
+        Pantalla(rawValue: UserDefaults.standard.integer(forKey: "pantalla")) ?? .principal
 
     var body: some View {
         NavigationStack {
